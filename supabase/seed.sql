@@ -16,6 +16,7 @@ with arcillas as (
 )
 insert into public.products (
   name,
+  sku,
   category_id,
   unit,
   current_stock,
@@ -26,6 +27,7 @@ insert into public.products (
 )
 select
   product_name,
+  product_sku,
   arcillas.id,
   'kg',
   0,
@@ -36,22 +38,22 @@ select
 from arcillas
 cross join (
   values
-    ('Damasco'),
-    ('Terracota'),
-    ('Havai'),
-    ('Egipto'),
-    ('Ambar'),
-    ('Fendi'),
-    ('Flocos'),
-    ('Sepia'),
-    ('Lotus'),
-    ('Everest'),
-    ('Cappuccino'),
-    ('Saara'),
-    ('Marrocos'),
-    ('Siberia'),
-    ('Fénix'),
-    ('Vesuvio'),
-    ('Londres')
-) as seed_products(product_name)
+    ('Damasco', 'arc-dam'),
+    ('Terracota', 'arc-ter'),
+    ('Havai', 'arc-hav'),
+    ('Egipto', 'arc-egi'),
+    ('Ambar', 'arc-amb'),
+    ('Fendi', 'arc-fen'),
+    ('Flocos', 'arc-flo'),
+    ('Sepia', 'arc-sep'),
+    ('Lotus', 'arc-lot'),
+    ('Everest', 'arc-eve'),
+    ('Cappuccino', 'arc-cap'),
+    ('Saara', 'arc-saa'),
+    ('Marrocos', 'arc-mar'),
+    ('Siberia', 'arc-sib'),
+    ('Fénix', 'arc-fnx'),
+    ('Vesuvio', 'arc-ves'),
+    ('Londres', 'arc-lon')
+) as seed_products(product_name, product_sku)
 on conflict (name, category_id) do nothing;

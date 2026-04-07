@@ -10,6 +10,7 @@ const navigation = [
   { href: "/sales", label: "Ventas" },
   { href: "/orders", label: "Pedidos" },
   { href: "/customers", label: "Clientes" },
+  { href: "/imports", label: "Importar CSV" },
   { href: "/movements", label: "Movimientos" },
   { href: "/expenses", label: "Gastos" },
 ];

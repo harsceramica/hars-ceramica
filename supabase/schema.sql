@@ -18,6 +18,7 @@ create table if not exists public.customers (
   address text,
   province text,
   phone text,
+  transport text,
   payment_method text,
   purchase_channel text,
   products_of_interest text,
@@ -28,6 +29,7 @@ create table if not exists public.customers (
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  sku text unique,
   category_id uuid not null references public.product_categories(id) on delete restrict,
   unit text not null default 'kg',
   current_stock numeric(12,2) not null default 0 check (current_stock >= 0),
@@ -44,6 +46,9 @@ create table if not exists public.sales (
   product_id uuid not null references public.products(id) on delete restrict,
   customer_id uuid references public.customers(id) on delete set null,
   status text not null default 'pendiente_de_pago' check (status in ('pendiente_de_pago', 'pendiente', 'pagado', 'por_despachar', 'despachado', 'entregado', 'cancelado')),
+  import_source text,
+  external_reference text,
+  external_line_reference text unique,
   quantity numeric(12,2) not null check (quantity > 0),
   unit_price numeric(12,2) not null check (unit_price >= 0),
   discount_percent numeric(5,2) not null default 0 check (discount_percent >= 0 and discount_percent <= 100),
@@ -75,9 +80,11 @@ create table if not exists public.expenses (
 
 create index if not exists idx_products_category on public.products(category_id);
 create index if not exists idx_products_active on public.products(is_active);
+create index if not exists idx_products_sku on public.products(sku);
 create index if not exists idx_customers_name on public.customers(name);
 create index if not exists idx_sales_product on public.sales(product_id);
 create index if not exists idx_sales_customer on public.sales(customer_id);
+create index if not exists idx_sales_external_reference on public.sales(external_reference);
 create index if not exists idx_sales_created_at on public.sales(created_at desc);
 create index if not exists idx_stock_movements_product on public.stock_movements(product_id);
 create index if not exists idx_stock_movements_created_at on public.stock_movements(created_at desc);
@@ -89,6 +96,9 @@ create or replace function public.create_sale(
   p_unit_price numeric,
   p_customer_id uuid default null,
   p_status text default 'pendiente_de_pago',
+  p_import_source text default null,
+  p_external_reference text default null,
+  p_external_line_reference text default null,
   p_customer text default null,
   p_channel text default null,
   p_created_at timestamptz default now()
@@ -106,6 +116,16 @@ declare
   v_cost numeric(12,2);
   v_profit numeric(12,2);
 begin
+  if p_external_line_reference is not null then
+    select * into v_sale
+    from public.sales
+    where external_line_reference = p_external_line_reference;
+
+    if found then
+      return v_sale;
+    end if;
+  end if;
+
   select * into v_product
   from public.products
   where id = p_product_id
@@ -154,6 +174,9 @@ begin
     product_id,
     customer_id,
     status,
+    import_source,
+    external_reference,
+    external_line_reference,
     quantity,
     unit_price,
     discount_percent,
@@ -168,6 +191,9 @@ begin
     p_product_id,
     p_customer_id,
     p_status,
+    p_import_source,
+    p_external_reference,
+    p_external_line_reference,
     p_quantity,
     v_effective_unit_price,
     v_discount_percent,
@@ -307,6 +333,7 @@ with arcillas as (
 )
 insert into public.products (
   name,
+  sku,
   category_id,
   unit,
   current_stock,
@@ -317,6 +344,7 @@ insert into public.products (
 )
 select
   product_name,
+  product_sku,
   arcillas.id,
   'kg',
   0,
@@ -327,22 +355,22 @@ select
 from arcillas
 cross join (
   values
-    ('Damasco'),
-    ('Terracota'),
-    ('Havai'),
-    ('Egipto'),
-    ('Ambar'),
-    ('Fendi'),
-    ('Flocos'),
-    ('Sepia'),
-    ('Lotus'),
-    ('Everest'),
-    ('Cappuccino'),
-    ('Saara'),
-    ('Marrocos'),
-    ('Siberia'),
-    ('Fénix'),
-    ('Vesuvio'),
-    ('Londres')
-) as seed_products(product_name)
+    ('Damasco', 'arc-dam'),
+    ('Terracota', 'arc-ter'),
+    ('Havai', 'arc-hav'),
+    ('Egipto', 'arc-egi'),
+    ('Ambar', 'arc-amb'),
+    ('Fendi', 'arc-fen'),
+    ('Flocos', 'arc-flo'),
+    ('Sepia', 'arc-sep'),
+    ('Lotus', 'arc-lot'),
+    ('Everest', 'arc-eve'),
+    ('Cappuccino', 'arc-cap'),
+    ('Saara', 'arc-saa'),
+    ('Marrocos', 'arc-mar'),
+    ('Siberia', 'arc-sib'),
+    ('Fénix', 'arc-fnx'),
+    ('Vesuvio', 'arc-ves'),
+    ('Londres', 'arc-lon')
+) as seed_products(product_name, product_sku)
 on conflict (name, category_id) do nothing;

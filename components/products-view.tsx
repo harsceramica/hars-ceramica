@@ -11,6 +11,7 @@ import type { ProductCategory, ProductFormValues, ProductWithCategory } from "@/
 
 const initialForm: ProductFormValues = {
   name: "",
+  sku: "",
   category_id: "",
   unit: "kg",
   current_stock: 0,
@@ -114,6 +115,7 @@ export function ProductsView() {
     setEditingId(product.id);
     setForm({
       name: product.name,
+      sku: product.sku ?? "",
       category_id: product.category_id,
       unit: product.unit,
       current_stock: Number(product.current_stock),
@@ -146,6 +148,15 @@ export function ProductsView() {
                 required
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>SKU</Label>
+              <Input
+                placeholder="arc-flo"
+                value={form.sku}
+                onChange={(event) => setForm({ ...form, sku: event.target.value })}
               />
             </div>
 
@@ -262,6 +273,7 @@ export function ProductsView() {
               <thead className="bg-stone-50 text-stone-600">
                 <tr>
                   <th className="px-5 py-4 font-medium">Producto</th>
+                  <th className="px-5 py-4 font-medium">SKU</th>
                   <th className="px-5 py-4 font-medium">Categoria</th>
                   <th className="px-5 py-4 font-medium">Stock</th>
                   <th className="px-5 py-4 font-medium">Costo</th>
@@ -274,6 +286,7 @@ export function ProductsView() {
                 {products.map((product) => (
                   <tr key={product.id} className="border-t border-stone-100">
                     <td className="px-5 py-4 font-medium text-stone-900">{product.name}</td>
+                    <td className="px-5 py-4 text-stone-600">{product.sku || "-"}</td>
                     <td className="px-5 py-4 text-stone-600">{product.category?.name}</td>
                     <td className="px-5 py-4 text-stone-600">
                       {Number(product.current_stock)} {product.unit}

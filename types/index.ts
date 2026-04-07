@@ -42,6 +42,7 @@ export type SaleStatus =
 
 export type ProductFormValues = {
   name: string;
+  sku?: string;
   category_id: string;
   unit: string;
   current_stock: number;
@@ -80,7 +81,15 @@ export type CustomerFormValues = {
   address?: string;
   province?: string;
   phone?: string;
+  transport?: string;
   payment_method?: string;
   purchase_channel?: string;
   products_of_interest?: string;
+};
+
+export type ImportCsvResult = {
+  imported: number;
+  skipped: number;
+  customersCreated: number;
+  warnings: string[];
 };

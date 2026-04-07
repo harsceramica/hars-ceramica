@@ -52,6 +52,7 @@ export type Database = {
           address: string | null;
           province: string | null;
           phone: string | null;
+          transport: string | null;
           payment_method: string | null;
           purchase_channel: string | null;
           products_of_interest: string | null;
@@ -64,6 +65,7 @@ export type Database = {
           address?: string | null;
           province?: string | null;
           phone?: string | null;
+          transport?: string | null;
           payment_method?: string | null;
           purchase_channel?: string | null;
           products_of_interest?: string | null;
@@ -76,6 +78,7 @@ export type Database = {
           address?: string | null;
           province?: string | null;
           phone?: string | null;
+          transport?: string | null;
           payment_method?: string | null;
           purchase_channel?: string | null;
           products_of_interest?: string | null;
@@ -88,6 +91,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          sku: string | null;
           category_id: string;
           unit: string;
           current_stock: number;
@@ -100,6 +104,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
+          sku?: string | null;
           category_id: string;
           unit?: string;
           current_stock?: number;
@@ -112,6 +117,7 @@ export type Database = {
         Update: {
           id?: string;
           name?: string;
+          sku?: string | null;
           category_id?: string;
           unit?: string;
           current_stock?: number;
@@ -144,6 +150,9 @@ export type Database = {
             | "despachado"
             | "entregado"
             | "cancelado";
+          import_source: string | null;
+          external_reference: string | null;
+          external_line_reference: string | null;
           quantity: number;
           unit_price: number;
           discount_percent: number;
@@ -166,6 +175,9 @@ export type Database = {
             | "despachado"
             | "entregado"
             | "cancelado";
+          import_source?: string | null;
+          external_reference?: string | null;
+          external_line_reference?: string | null;
           quantity: number;
           unit_price: number;
           discount_percent?: number;
@@ -188,6 +200,9 @@ export type Database = {
             | "despachado"
             | "entregado"
             | "cancelado";
+          import_source?: string | null;
+          external_reference?: string | null;
+          external_line_reference?: string | null;
           quantity?: number;
           unit_price?: number;
           discount_percent?: number;
@@ -294,6 +309,9 @@ export type Database = {
             | "despachado"
             | "entregado"
             | "cancelado";
+          p_import_source?: string | null;
+          p_external_reference?: string | null;
+          p_external_line_reference?: string | null;
           p_customer?: string | null;
           p_channel?: string | null;
           p_created_at?: string;

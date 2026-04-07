@@ -43,6 +43,7 @@ export async function createCustomer(values: CustomerFormValues): Promise<Custom
       address: values.address ?? null,
       province: values.province ?? null,
       phone: values.phone ?? null,
+      transport: values.transport ?? null,
       payment_method: values.payment_method ?? null,
       purchase_channel: values.purchase_channel ?? null,
       products_of_interest: values.products_of_interest ?? null,

@@ -32,6 +32,7 @@ const initialCustomerForm: CustomerFormValues = {
   address: "",
   province: "",
   phone: "",
+  transport: "",
   payment_method: "",
   purchase_channel: "",
   products_of_interest: "",
@@ -363,6 +364,17 @@ export function SalesView() {
                       onChange={(event) => setCustomerForm({ ...customerForm, phone: event.target.value })}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <Label>Transporte</Label>
+                  <Input
+                    placeholder="Andreani, Via Cargo, transporte local..."
+                    value={customerForm.transport}
+                    onChange={(event) =>
+                      setCustomerForm({ ...customerForm, transport: event.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

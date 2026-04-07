@@ -42,6 +42,7 @@ export function CustomersView() {
                 <th className="px-5 py-4 font-medium">Nombre</th>
                 <th className="px-5 py-4 font-medium">Telefono</th>
                 <th className="px-5 py-4 font-medium">Provincia</th>
+                <th className="px-5 py-4 font-medium">Transporte</th>
                 <th className="px-5 py-4 font-medium">Medio de pago</th>
                 <th className="px-5 py-4 font-medium">Canal</th>
                 <th className="px-5 py-4 font-medium">Que compra</th>
@@ -55,6 +56,7 @@ export function CustomersView() {
                   <td className="px-5 py-4 font-medium text-stone-900">{customer.name}</td>
                   <td className="px-5 py-4 text-stone-600">{customer.phone || "-"}</td>
                   <td className="px-5 py-4 text-stone-600">{customer.province || "-"}</td>
+                  <td className="px-5 py-4 text-stone-600">{customer.transport || "-"}</td>
                   <td className="px-5 py-4 text-stone-600">{customer.payment_method || "-"}</td>
                   <td className="px-5 py-4 text-stone-600">{customer.purchase_channel || "-"}</td>
                   <td className="px-5 py-4 text-stone-600">{customer.products_of_interest || "-"}</td>

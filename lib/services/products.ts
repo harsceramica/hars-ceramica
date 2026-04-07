@@ -23,7 +23,10 @@ export async function getProducts(includeInactive = false): Promise<ProductWithC
 export async function createProduct(values: ProductFormValues): Promise<Product> {
   const { data, error } = await supabase
     .from("products")
-    .insert(values)
+    .insert({
+      ...values,
+      sku: values.sku?.trim() || null,
+    })
     .select("*")
     .single();
 
@@ -37,7 +40,10 @@ export async function createProduct(values: ProductFormValues): Promise<Product>
 export async function updateProduct(id: string, values: Partial<ProductFormValues>): Promise<Product> {
   const { data, error } = await supabase
     .from("products")
-    .update(values)
+    .update({
+      ...values,
+      sku: values.sku?.trim() || null,
+    })
     .eq("id", id)
     .select("*")
     .single();
