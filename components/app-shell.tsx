@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -17,6 +18,22 @@ const navigation = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const isPublicPreview = pathname?.startsWith("/landing-preview");
+  const isLoginPage = pathname === "/login";
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+    });
+
+    router.replace("/login");
+    router.refresh();
+  }
+
+  if (isPublicPreview || isLoginPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen">
@@ -46,6 +63,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+
+          <div className="mt-8 border-t border-brand-800 pt-6">
+            <Button
+              className="w-full bg-brand-800 hover:bg-brand-700"
+              onClick={handleLogout}
+              type="button"
+            >
+              Cerrar sesión
+            </Button>
+          </div>
         </aside>
 
         <main className="flex-1">{children}</main>
