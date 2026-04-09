@@ -31,6 +31,42 @@ export type DashboardMetrics = {
   monthlyProfit: number;
 };
 
+export type DashboardStockItem = {
+  id: string;
+  name: string;
+  stock: number;
+  unit: string;
+};
+
+export type DashboardRecentSale = {
+  id: string;
+  created_at: string;
+  total: number;
+  quantity: number;
+  customer: string | null;
+  channel: string | null;
+  product: {
+    name: string;
+    unit: string;
+  };
+};
+
+export type DashboardRecentExpense = {
+  id: string;
+  created_at: string;
+  concept: string;
+  category: string;
+  amount: number;
+  payment_method: string | null;
+};
+
+export type DashboardData = {
+  metrics: DashboardMetrics;
+  stockRanking: DashboardStockItem[];
+  recentSales: DashboardRecentSale[];
+  recentExpenses: DashboardRecentExpense[];
+};
+
 export type SaleStatus =
   | "pendiente_de_pago"
   | "pendiente"
