@@ -318,6 +318,24 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["sales"]["Row"];
       };
+      create_sale_batch: {
+        Args: {
+          p_customer_id?: string | null;
+          p_status?:
+            | "pendiente_de_pago"
+            | "pendiente"
+            | "pagado"
+            | "por_despachar"
+            | "despachado"
+            | "entregado"
+            | "cancelado";
+          p_customer?: string | null;
+          p_channel?: string | null;
+          p_created_at?: string;
+          p_items: Json;
+        };
+        Returns: Database["public"]["Tables"]["sales"]["Row"][];
+      };
       delete_sale_and_restore_stock: {
         Args: {
           p_sale_id: string;

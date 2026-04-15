@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
-import type { Sale, SaleFormValues, SaleStatus, SaleWithProduct } from "@/types";
+import type {
+  Sale,
+  SaleBatchFormValues,
+  SaleFormValues,
+  SaleStatus,
+  SaleWithProduct,
+} from "@/types";
 
 export async function getSales(): Promise<SaleWithProduct[]> {
   const { data, error } = await supabase
@@ -21,6 +27,9 @@ export async function createSale(values: SaleFormValues): Promise<Sale> {
     p_unit_price: values.unit_price,
     p_customer_id: values.customer_id ?? null,
     p_status: values.status,
+    p_import_source: null,
+    p_external_reference: null,
+    p_external_line_reference: null,
     p_customer: values.customer ?? null,
     p_channel: values.channel ?? null,
   });
@@ -30,6 +39,22 @@ export async function createSale(values: SaleFormValues): Promise<Sale> {
   }
 
   return data;
+}
+
+export async function createSaleBatch(values: SaleBatchFormValues): Promise<Sale[]> {
+  const { data, error } = await supabase.rpc("create_sale_batch", {
+    p_customer_id: values.customer_id ?? null,
+    p_status: values.status,
+    p_customer: values.customer ?? null,
+    p_channel: values.channel ?? null,
+    p_items: values.items,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
 }
 
 export async function deleteSale(id: string): Promise<void> {

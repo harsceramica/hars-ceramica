@@ -6,25 +6,30 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { createCustomer, getCustomers } from "@/lib/services/customers";
 import { getProducts } from "@/lib/services/products";
-import { createSale, deleteSale, getSales } from "@/lib/services/sales";
+import { createSaleBatch, deleteSale, getSales } from "@/lib/services/sales";
 import { applyDiscount, formatCurrency, formatDate, getDiscountPercent } from "@/lib/utils";
 import type {
   CustomerFormValues,
   CustomerWithStats,
   ProductWithCategory,
+  SaleBatchFormValues,
+  SaleLineItemFormValues,
   SaleStatus,
-  SaleFormValues,
   SaleWithProduct,
 } from "@/types";
 
-const initialSaleForm: SaleFormValues = {
+const initialLineItem: SaleLineItemFormValues = {
   product_id: "",
-  customer_id: "",
-  status: "pendiente_de_pago",
   quantity: 0,
   unit_price: 0,
+};
+
+const initialBatchForm: SaleBatchFormValues = {
+  customer_id: "",
+  status: "pendiente_de_pago",
   customer: "",
   channel: "",
+  items: [initialLineItem],
 };
 
 const initialCustomerForm: CustomerFormValues = {
@@ -52,7 +57,7 @@ export function SalesView() {
   const [sales, setSales] = useState<SaleWithProduct[]>([]);
   const [products, setProducts] = useState<ProductWithCategory[]>([]);
   const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
-  const [form, setForm] = useState<SaleFormValues>(initialSaleForm);
+  const [form, setForm] = useState<SaleBatchFormValues>(initialBatchForm);
   const [customerForm, setCustomerForm] = useState<CustomerFormValues>(initialCustomerForm);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -73,8 +78,17 @@ export function SalesView() {
       setCustomers(customersResponse);
       setForm((current) => ({
         ...current,
-        product_id: current.product_id || productsResponse[0]?.id || "",
-        unit_price: current.unit_price || Number(productsResponse[0]?.price ?? 0),
+        items: current.items.map((item, index) => {
+          if (index === 0 && !item.product_id) {
+            return {
+              ...item,
+              product_id: productsResponse[0]?.id ?? "",
+              unit_price: Number(productsResponse[0]?.price ?? 0),
+            };
+          }
+
+          return item;
+        }),
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar las ventas.");
@@ -85,23 +99,72 @@ export function SalesView() {
     void loadData();
   }, []);
 
-  const selectedProduct = useMemo(
-    () => products.find((product) => product.id === form.product_id),
-    [products, form.product_id],
-  );
-
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === form.customer_id),
     [customers, form.customer_id],
   );
 
-  const discountPercent = getDiscountPercent({
-    quantity: Number(form.quantity),
-    category: selectedProduct?.category,
+  const itemSummaries = form.items.map((item) => {
+    const product = products.find((entry) => entry.id === item.product_id);
+    const discountPercent = getDiscountPercent({
+      quantity: Number(item.quantity),
+      category: product?.category,
+    });
+    const finalUnitPrice = applyDiscount(Number(item.unit_price), discountPercent);
+    const lineTotal = Number((Number(item.quantity || 0) * finalUnitPrice).toFixed(2));
+
+    return {
+      item,
+      product,
+      discountPercent,
+      finalUnitPrice,
+      lineTotal,
+    };
   });
 
-  const finalUnitPrice = applyDiscount(Number(form.unit_price), discountPercent);
-  const total = Number((Number(form.quantity || 0) * finalUnitPrice).toFixed(2));
+  const totalKg = itemSummaries.reduce((sum, entry) => sum + Number(entry.item.quantity || 0), 0);
+  const totalAmount = itemSummaries.reduce((sum, entry) => sum + entry.lineTotal, 0);
+
+  function updateItem(index: number, updates: Partial<SaleLineItemFormValues>) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        const nextItem = { ...item, ...updates };
+        const selectedProduct = products.find((product) => product.id === nextItem.product_id);
+
+        if (updates.product_id != null) {
+          nextItem.unit_price = Number(selectedProduct?.price ?? 0);
+        }
+
+        return nextItem;
+      }),
+    }));
+  }
+
+  function addItem() {
+    setForm((current) => ({
+      ...current,
+      items: [
+        ...current.items,
+        {
+          product_id: products[0]?.id ?? "",
+          quantity: 0,
+          unit_price: Number(products[0]?.price ?? 0),
+        },
+      ],
+    }));
+  }
+
+  function removeItem(index: number) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,18 +173,30 @@ export function SalesView() {
       setSaving(true);
       setError("");
 
-      await createSale({
+      const validItems = form.items.filter((item) => item.product_id && item.quantity > 0);
+
+      if (validItems.length === 0) {
+        throw new Error("Agregá al menos un producto con cantidad mayor a cero.");
+      }
+
+      await createSaleBatch({
         ...form,
         customer_id: form.customer_id || undefined,
         customer: selectedCustomer?.name || form.customer || undefined,
         channel: form.channel || selectedCustomer?.purchase_channel || undefined,
+        items: validItems,
       });
 
       await loadData();
       setForm({
-        ...initialSaleForm,
-        product_id: products[0]?.id ?? "",
-        unit_price: Number(products[0]?.price ?? 0),
+        ...initialBatchForm,
+        items: [
+          {
+            product_id: products[0]?.id ?? "",
+            quantity: 0,
+            unit_price: Number(products[0]?.price ?? 0),
+          },
+        ],
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar la venta.");
@@ -163,16 +238,6 @@ export function SalesView() {
     }
   }
 
-  function handleProductChange(productId: string) {
-    const product = products.find((item) => item.id === productId);
-
-    setForm((current) => ({
-      ...current,
-      product_id: productId,
-      unit_price: Number(product?.price ?? 0),
-    }));
-  }
-
   function handleCustomerChange(customerId: string) {
     const customer = customers.find((item) => item.id === customerId);
 
@@ -188,38 +253,27 @@ export function SalesView() {
     <section>
       <PageHeader
         title="Ventas"
-        description="Ventas con cliente opcional, CRM basico y descuento automatico por cantidad segun la categoria."
+        description="Cargá varias arcillas en una sola venta, con cliente opcional, descuentos automáticos y estado del pedido."
       />
 
       {error ? <p className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[420px,1fr]">
+      <div className="grid gap-6 xl:grid-cols-[520px,1fr]">
         <div className="space-y-6">
           <Card>
-            <h3 className="text-lg font-semibold text-stone-900">Registrar venta</h3>
-
-            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <Label>Producto</Label>
-                <Select
-                  required
-                  value={form.product_id}
-                  onChange={(event) => handleProductChange(event.target.value)}
-                >
-                  <option value="">Seleccionar</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - Stock {Number(product.current_stock)} {product.unit}
-                    </option>
-                  ))}
-                </Select>
-                {selectedProduct?.category?.package_size ? (
-                  <p className="mt-2 text-xs text-stone-500">
-                    Se trabaja en {selectedProduct.unit}. Referencia de paquete: {Number(selectedProduct.category.package_size)} {selectedProduct.unit}.
-                  </p>
-                ) : null}
+                <h3 className="text-lg font-semibold text-stone-900">Registrar venta</h3>
+                <p className="mt-1 text-sm text-stone-500">
+                  Sumá varios productos y confirmalos todos juntos.
+                </p>
               </div>
+              <Button className="px-4" onClick={addItem} type="button">
+                Agregar producto
+              </Button>
+            </div>
 
+            <form className="mt-5 space-y-5" onSubmit={handleSubmit}>
               <div>
                 <Label>Cliente</Label>
                 <div className="flex gap-2">
@@ -246,82 +300,137 @@ export function SalesView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Cantidad en kg</Label>
-                  <Input
-                    required
-                    min={0.01}
-                    step="0.01"
-                    type="number"
-                    value={form.quantity}
-                    onChange={(event) => setForm({ ...form, quantity: Number(event.target.value) })}
-                  />
+                  <Label>Estado del pedido</Label>
+                  <Select
+                    value={form.status}
+                    onChange={(event) =>
+                      setForm({ ...form, status: event.target.value as SaleStatus })
+                    }
+                  >
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>Precio base por kg</Label>
-                  <Input
-                    required
-                    min={0}
-                    step="0.01"
-                    type="number"
-                    value={form.unit_price}
-                    onChange={(event) =>
-                      setForm({ ...form, unit_price: Number(event.target.value) })
-                    }
-                  />
+                  <Label>Canal de compra</Label>
+                  <Select
+                    value={form.channel}
+                    onChange={(event) => setForm({ ...form, channel: event.target.value })}
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="Tiendanube">Tiendanube</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Mostrador">Mostrador</option>
+                  </Select>
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-2xl bg-stone-50 p-4 text-sm text-stone-700">
+              <div className="space-y-4">
+                {itemSummaries.map((entry, index) => (
+                  <div key={`${entry.item.product_id}-${index}`} className="rounded-2xl border border-stone-200 p-4">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <p className="text-sm font-medium text-stone-900">Producto {index + 1}</p>
+                      {form.items.length > 1 ? (
+                        <Button
+                          className="h-9 bg-red-600 px-4 hover:bg-red-700"
+                          onClick={() => removeItem(index)}
+                          type="button"
+                        >
+                          Quitar
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <Label>Producto</Label>
+                      <Select
+                        required
+                        value={entry.item.product_id}
+                        onChange={(event) => updateItem(index, { product_id: event.target.value })}
+                      >
+                        <option value="">Seleccionar</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} - Stock {Number(product.current_stock)} {product.unit}
+                          </option>
+                        ))}
+                      </Select>
+                      {entry.product?.category?.package_size ? (
+                        <p className="mt-2 text-xs text-stone-500">
+                          Se trabaja en {entry.product.unit}. Referencia de paquete: {Number(entry.product.category.package_size)} {entry.product.unit}.
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Cantidad en kg</Label>
+                        <Input
+                          required
+                          min={0.01}
+                          step="0.01"
+                          type="number"
+                          value={entry.item.quantity}
+                          onChange={(event) =>
+                            updateItem(index, { quantity: Number(event.target.value) })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Precio base por kg</Label>
+                        <Input
+                          required
+                          min={0}
+                          step="0.01"
+                          type="number"
+                          value={entry.item.unit_price}
+                          onChange={(event) =>
+                            updateItem(index, { unit_price: Number(event.target.value) })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 rounded-2xl bg-stone-50 p-4 text-sm text-stone-700">
+                      <div className="flex items-center justify-between">
+                        <span>Descuento aplicado</span>
+                        <strong>{entry.discountPercent}%</strong>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Precio final por kg</span>
+                        <strong>{formatCurrency(entry.finalUnitPrice)}</strong>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Subtotal</span>
+                        <strong>{formatCurrency(entry.lineTotal)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-stone-700">
                 <div className="flex items-center justify-between">
-                  <span>Descuento aplicado</span>
-                  <strong>{discountPercent}%</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Precio final por kg</span>
-                  <strong>{formatCurrency(finalUnitPrice)}</strong>
+                  <span>Total de kilos</span>
+                  <strong>{totalKg} kg</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Total estimado</span>
-                  <strong>{formatCurrency(total)}</strong>
+                  <strong>{formatCurrency(totalAmount)}</strong>
                 </div>
                 <p className="text-xs text-stone-500">
-                  Desde 200 kg aplica 9% off. Desde 400 kg aplica 15% off.
+                  El descuento se calcula por producto según la cantidad cargada en cada línea.
                 </p>
               </div>
 
-              <div>
-                <Label>Estado del pedido</Label>
-                <Select
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm({ ...form, status: event.target.value as SaleStatus })
-                  }
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <Label>Canal de compra</Label>
-                <Select
-                  value={form.channel}
-                  onChange={(event) => setForm({ ...form, channel: event.target.value })}
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="Tiendanube">Tiendanube</option>
-                  <option value="Instagram">Instagram</option>
-                  <option value="WhatsApp">WhatsApp</option>
-                  <option value="Mostrador">Mostrador</option>
-                </Select>
-              </div>
-
               <Button disabled={saving} type="submit">
-                {saving ? "Guardando..." : "Crear venta"}
+                {saving ? "Guardando..." : "Confirmar venta"}
               </Button>
             </form>
           </Card>

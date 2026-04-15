@@ -98,6 +98,20 @@ export type SaleFormValues = {
   channel?: string;
 };
 
+export type SaleLineItemFormValues = {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+};
+
+export type SaleBatchFormValues = {
+  customer_id?: string;
+  status: SaleStatus;
+  customer?: string;
+  channel?: string;
+  items: SaleLineItemFormValues[];
+};
+
 export type StockMovementFormValues = {
   product_id: string;
   type: "entrada" | "salida" | "ajuste";
